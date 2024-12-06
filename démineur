@@ -1,0 +1,231 @@
+Pour créer un jeu de démineur classique en Java, nous allons structurer le code en plusieurs classes pour une meilleure organisation et maintenabilité :
+
+Cell : Représente une cellule individuelle de la grille. Chaque cellule peut contenir une mine, un chiffre, ou être vide. Elle peut être révélée ou marquée.
+
+Board : Représente la grille de jeu, composée de cellules. Cette classe gère la création de la grille, le placement des mines, et la logique principale du démineur.
+
+Minesweeper : Contient la logique principale pour jouer au jeu, comme les interactions utilisateur (entrée/sortie).
+
+
+1. Classe Cell
+java
+Copier le code
+public class Cell {
+    private boolean hasMine;
+    private boolean isRevealed;
+    private boolean isFlagged;
+    private int surroundingMines;
+
+    public Cell() {
+        this.hasMine = false;
+        this.isRevealed = false;
+        this.isFlagged = false;
+        this.surroundingMines = 0;
+    }
+
+    public boolean hasMine() {
+        return hasMine;
+    }
+
+    public void placeMine() {
+        this.hasMine = true;
+    }
+
+    public boolean isRevealed() {
+        return isRevealed;
+    }
+
+    public void reveal() {
+        this.isRevealed = true;
+    }
+
+    public boolean isFlagged() {
+        return isFlagged;
+    }
+
+    public void toggleFlag() {
+        this.isFlagged = !isFlagged;
+    }
+
+    public int getSurroundingMines() {
+        return surroundingMines;
+    }
+
+    public void setSurroundingMines(int surroundingMines) {
+        this.surroundingMines = surroundingMines;
+    }
+
+    @Override
+    public String toString() {
+        if (isFlagged) return "F";
+        if (!isRevealed) return ".";
+        if (hasMine) return "*";
+        return surroundingMines > 0 ? String.valueOf(surroundingMines) : " ";
+    }
+}
+2. Classe Board
+java
+Copier le code
+import java.util.Random;
+
+public class Board {
+    private final int rows;
+    private final int cols;
+    private final int totalMines;
+    private final Cell[][] grid;
+
+    public Board(int rows, int cols, int totalMines) {
+        this.rows = rows;
+        this.cols = cols;
+        this.totalMines = totalMines;
+        this.grid = new Cell[rows][cols];
+        initializeBoard();
+    }
+
+    private void initializeBoard() {
+        // Initialiser les cellules
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                grid[i][j] = new Cell();
+            }
+        }
+
+        // Placer les mines aléatoirement
+        placeMines();
+
+        // Calculer les mines adjacentes
+        calculateSurroundingMines();
+    }
+
+    private void placeMines() {
+        Random random = new Random();
+        int placedMines = 0;
+
+        while (placedMines < totalMines) {
+            int row = random.nextInt(rows);
+            int col = random.nextInt(cols);
+
+            if (!grid[row][col].hasMine()) {
+                grid[row][col].placeMine();
+                placedMines++;
+            }
+        }
+    }
+
+    private void calculateSurroundingMines() {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (!grid[i][j].hasMine()) {
+                    grid[i][j].setSurroundingMines(countAdjacentMines(i, j));
+                }
+            }
+        }
+    }
+
+    private int countAdjacentMines(int row, int col) {
+        int count = 0;
+
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                int newRow = row + i;
+                int newCol = col + j;
+
+                if (isValidPosition(newRow, newCol) && grid[newRow][newCol].hasMine()) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private boolean isValidPosition(int row, int col) {
+        return row >= 0 && row < rows && col >= 0 && col < cols;
+    }
+
+    public boolean revealCell(int row, int col) {
+        if (!isValidPosition(row, col) || grid[row][col].isRevealed() || grid[row][col].isFlagged()) {
+            return false;
+        }
+
+        grid[row][col].reveal();
+
+        // Révéler les cellules adjacentes si elle n'a pas de mines autour
+        if (grid[row][col].getSurroundingMines() == 0 && !grid[row][col].hasMine()) {
+            for (int i = -1; i <= 1; i++) {
+                for (int j = -1; j <= 1; j++) {
+                    revealCell(row + i, col + j);
+                }
+            }
+        }
+
+        return grid[row][col].hasMine();
+    }
+
+    public void toggleFlag(int row, int col) {
+        if (isValidPosition(row, col) && !grid[row][col].isRevealed()) {
+            grid[row][col].toggleFlag();
+        }
+    }
+
+    public void display() {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                System.out.print(grid[i][j] + " ");
+            }
+            System.out.println();
+        }
+    }
+}
+3. Classe Minesweeper
+java
+Copier le code
+import java.util.Scanner;
+
+public class Minesweeper {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Bienvenue dans le jeu de démineur !");
+        System.out.print("Entrez le nombre de lignes : ");
+        int rows = scanner.nextInt();
+        System.out.print("Entrez le nombre de colonnes : ");
+        int cols = scanner.nextInt();
+        System.out.print("Entrez le nombre de mines : ");
+        int mines = scanner.nextInt();
+
+        Board board = new Board(rows, cols, mines);
+
+        boolean gameOver = false;
+        while (!gameOver) {
+            board.display();
+
+            System.out.println("Actions : (R)évéler, (F)lag");
+            char action = scanner.next().charAt(0);
+
+            System.out.print("Entrez la ligne : ");
+            int row = scanner.nextInt();
+            System.out.print("Entrez la colonne : ");
+            int col = scanner.nextInt();
+
+            if (action == 'R' || action == 'r') {
+                gameOver = board.revealCell(row, col);
+                if (gameOver) {
+                    System.out.println("BOOM ! Vous avez perdu !");
+                }
+            } else if (action == 'F' || action == 'f') {
+                board.toggleFlag(row, col);
+            }
+        }
+
+        System.out.println("Fin du jeu !");
+        board.display();
+        scanner.close();
+    }
+}
+Fonctionnalités :
+Drapeaux : Permet de marquer des cellules suspectées d'être des mines.
+Révélation automatique : Si une cellule n'a pas de mines autour, elle révèle automatiquement les cellules voisines.
+Affichage dynamique : Montre l'état du plateau après chaque tour.
+Conditions de victoire et de défaite : Défaite si une mine est révélée, victoire si toutes les cellules sans mines sont découvertes.
+Ce jeu est extensible pour ajouter des fonctionnalités comme des niveaux de difficulté ou un chronomètre.
